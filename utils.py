@@ -4,8 +4,10 @@ import scipy.ndimage
 import glob
 import imageio
 import numpy as np
+import hydra
 
 from PIL import Image
+from config import Config
 
 def preprocess(path, scale=3):
     """
@@ -41,16 +43,20 @@ def modcrop(image, scale):
         image = image[:h, :w]
     return image
 
-# def input_setup():
-#   """
-#   Read image files and make their sub-images and saved them as a h5 file format.
-#   """
-#   sub_input_array, sub_label_array = [], []
-
-
-
+def input_setup():
+  """
+  Read image files and make their sub-images and saved them as a h5 file format.
+  """
+  cfg = Config()
+  padding = abs(cfg.image_size - cfg.label_size) / 2
+  sub_input_array, sub_label_array = [], []
+  if cfg.is_train:
+    for i in range(len(data)):
+      input_, label_ = preprocess(data[i], cfg.scale)
+      if len(input_.shape) == 3:
+        h, w, _ = input_.shape
+      else:
+        h, w = input_.shape
 
 if __name__ == "__main__":
-    image = preprocess("Train/t1.bmp")
-    print(image)
-    print(image.shape)
+    input_setup()
