@@ -1,6 +1,14 @@
 is_train: True
 image_size: 33
 label_size: 21
-optimizer:
-  lr: 0.01
+batch_size: 64
+scale: 3
+stride: 14
+dataset:
+  train_path: "Train"
+  test_path: "Test"
+train:
+  use_cuda: True
+  lr: 0.0001
+  epoches: 200
   

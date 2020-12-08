@@ -4,9 +4,10 @@ import scipy.ndimage
 import glob
 import imageio
 import numpy as np
-import hydra
+import h5py
 
 from PIL import Image
+from tqdm import tqdm
 from config import Config
 
 def preprocess(path, scale=3):
@@ -43,20 +44,71 @@ def modcrop(image, scale):
         image = image[:h, :w]
     return image
 
+def make_data(data_array, label_array, cfg):
+    """
+    Make input data as h5 file format
+    Depending on 'is_train' (flag value), savepath would be changed.
+    """
+    # H * W * C to C * H * W
+    data_array = np.transpose(data_array, (0, 3, 1, 2))
+    label_array = np.transpose(label_array, (0, 3, 1, 2))
+    save_folder = os.path.join(os.getcwd(), "checkpoint")
+    if not os.path.exists(save_folder):
+        os.makedirs(save_folder)
+    if cfg.is_train:
+        savepath = os.path.join(save_folder, "train.h5")
+    else:
+        savepath = os.path.join(save_folder, "test.h5")
+    with h5py.File(savepath, 'w') as hf:
+        hf.create_dataset('data', data=data_array)
+        hf.create_dataset('label', data=label_array)
+
+def prepare_data(data_path, cfg):
+    """
+    Args:
+        dataset: choose train dataset or test dataset
+        
+        For train dataset, output data would be ['.../t1.bmp', '.../t2.bmp', ..., '.../t99.bmp']
+    """
+    if cfg.is_train:
+        data_dir = os.path.join(os.getcwd(), data_path)
+        data = glob.glob(os.path.join(data_dir, "*.bmp"))
+    else:
+        data_dir = os.path.join(os.sep, (os.path.join(os.getcwd(), data_path)), "Set5")
+        data = glob.glob(os.path.join(data_dir, "*.bmp"))
+    return data
+
 def input_setup():
-  """
-  Read image files and make their sub-images and saved them as a h5 file format.
-  """
-  cfg = Config()
-  padding = abs(cfg.image_size - cfg.label_size) / 2
-  sub_input_array, sub_label_array = [], []
-  if cfg.is_train:
-    for i in range(len(data)):
-      input_, label_ = preprocess(data[i], cfg.scale)
-      if len(input_.shape) == 3:
-        h, w, _ = input_.shape
-      else:
-        h, w = input_.shape
+    """
+    Read image files and make their sub-images and saved them as a h5 file format.
+    """
+    cfg = Config()
+    if cfg.is_train:
+        data_path = cfg.dataset.train_path
+    else:
+        data_path = cfg.dataset.test_path
+    file_list = prepare_data(data_path, cfg)
+    padding = abs(cfg.image_size - cfg.label_size) / 2
+    sub_input_array, sub_label_array = [], []
+    if cfg.is_train:
+        for i in tqdm(range(len(file_list))):
+            input_, label_ = preprocess(file_list[i], cfg.scale)
+            if len(input_.shape) == 3:
+                h, w, _ = input_.shape
+            else:
+                h, w = input_.shape
+            for x in range(0, h - cfg.image_size+1, cfg.stride):
+                for y in range(0, w-cfg.image_size+1, cfg.stride):
+                    sub_input = input_[x:(x+cfg.image_size), y:(y+cfg.image_size)] # [33 x 33]
+                    sub_label = label_[x+int(padding):x+int(padding)+cfg.label_size, y+int(padding):y+int(padding)+cfg.label_size] # [21 x 21]
+                    # Make channel value
+                    sub_input = sub_input.reshape([cfg.image_size, cfg.image_size, 1])  
+                    sub_label = sub_label.reshape([cfg.label_size, cfg.label_size, 1])
+                    sub_input_array.append(sub_input)
+                    sub_label_array.append(sub_label)
+    data_array = np.array(sub_input_array)
+    label_array = np.array(sub_label_array)
+    make_data(data_array, label_array, cfg)
 
 if __name__ == "__main__":
     input_setup()
