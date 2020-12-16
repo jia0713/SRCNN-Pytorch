@@ -106,9 +106,38 @@ def input_setup():
                     sub_label = sub_label.reshape([cfg.label_size, cfg.label_size, 1])
                     sub_input_array.append(sub_input)
                     sub_label_array.append(sub_label)
+    else:
+        input_, label_ = preprocess(file_list[2], cfg.scale)
+        if len(input_.shape) == 3:
+            h, w, _ = input_.shape
+        else:
+            h, w = input_.shape
+        # Numbers of sub-images in height and width of image are needed to compute merge operation.
+        nx = ny = 0 
+        for x in range(0, h-cfg.image_size+1, cfg.stride):
+            nx += 1
+            for y in range(0, w-cfg.image_size+1, cfg.stride):
+                ny += 1
+                sub_input = input_[x:x+cfg.image_size, y:cfg.image_size] # [33 x 33]
+                sub_label = label_[x+int(padding):x+int(padding)+cfg.label_size, y+int(padding):y+int(padding)+cfg.label_size] # [21 x 21]
+                sub_input = sub_input.reshape([cfg.image_size, cfg.image_size, 1])  
+                sub_label = sub_label.reshape([cfg.label_size, cfg.label_size, 1])
+                sub_input_array.append(sub_input)
+                sub_label_array.append(sub_label)
     data_array = np.array(sub_input_array)
     label_array = np.array(sub_label_array)
     make_data(data_array, label_array, cfg)
+    if not cfg.is_train:
+        return nx, ny
+
+def merge(images, size):
+    h, w = images.shape[1], images.shape[2]
+    img = np.zeros((h * size[0], w * size[1], 1))
+    for idx, image in enumerate(images):
+        i = idx % size[1]
+        j = idx // size[1]
+        img[j*h:(j+1)*h, i*w:(i+1)*w, :] = image
+    return img
 
 if __name__ == "__main__":
     input_setup()
