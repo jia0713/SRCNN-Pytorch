@@ -12,6 +12,7 @@ import torch.nn.functional as F
 
 from tqdm import tqdm
 from config import Config
+from imageio import imwrite
 from utils import input_setup, merge
 
 class SRCNN(nn.Module):
@@ -88,9 +89,7 @@ def eval(cfg):
     pred = model(data_array)
     pred = pred.cpu().detach().numpy()
     pred = merge(pred, [nx, ny])
-    return pred
-
-if __name__ == "__main__":
-    cfg = Config()
-    pred = eval(cfg)
-    print(pred.shape)
+    pred = pred.squeeze()
+    image_path = os.path.join(os.getcwd(), "Test")
+    image_path = os.path.join(image_path, "test_image.png")
+    imwrite(image_path, pred)

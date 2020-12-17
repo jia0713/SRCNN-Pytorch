@@ -107,7 +107,7 @@ def input_setup():
                     sub_input_array.append(sub_input)
                     sub_label_array.append(sub_label)
     else:
-        input_, label_ = preprocess(file_list[2], cfg.scale)
+        input_, label_ = preprocess(file_list[0], cfg.scale)
         if len(input_.shape) == 3:
             h, w, _ = input_.shape
         else:
@@ -116,6 +116,7 @@ def input_setup():
         nx = ny = 0 
         for x in range(0, h-cfg.image_size+1, cfg.stride):
             nx += 1
+            ny = 0
             for y in range(0, w-cfg.image_size+1, cfg.stride):
                 ny += 1
                 sub_input = input_[x:x+cfg.image_size, y:y+cfg.image_size] # [33 x 33]
