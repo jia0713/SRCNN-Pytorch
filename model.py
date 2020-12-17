@@ -1,5 +1,7 @@
 import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 import h5py
+import glob
 import torch
 import torchvision 
 
@@ -9,7 +11,8 @@ import numpy as np
 import torch.nn.functional as F
 
 from tqdm import tqdm
-# from config import Config
+from config import Config
+from utils import input_setup, merge
 
 class SRCNN(nn.Module):
     def __init__(self, cfg):
@@ -33,6 +36,8 @@ class SRCNN(nn.Module):
 def train(cfg):
     checkpoint_path = os.path.join(os.getcwd(), "checkpoint")
     train_file_path = os.path.join(checkpoint_path, "train.h5")
+    if not os.path.exists(train_file_path):
+        input_setup()
     with h5py.File(train_file_path, 'r') as hf:
         data_array = np.array(hf.get('data'))
         label_array = np.array(hf.get('label'))
@@ -59,18 +64,33 @@ def train(cfg):
         mean_loss = np.mean(loss_array)
         if epoch % 10 == 0:
             print(r"Epoch:{:d}  Loss:{:.4f}".format(epoch, mean_loss))
-        if epoch % 100 == 0:
+        if epoch % 20 == 0:
             torch.save(model.state_dict(), os.path.join(checkpoint_path, \
-                "srcnn_ep:{:3d}_loss:{:.4f}.pt".format(epoch, mean_loss)))
+                "SRCNN_ep:{:3d}_loss:{:.4f}.pt".format(epoch, mean_loss)))
 
+def eval(cfg):
+    nx, ny = input_setup()
+    checkpoint_path = os.path.join(os.getcwd(), "checkpoint")
+    model_list = glob.glob(os.path.join(checkpoint_path, "*.pt"))
+    model_list.sort()
+    model_path = model_list[-1]
+    use_cuda = cfg.train.use_cuda
+    device = torch.device("cuda" if use_cuda else "cpu")
+    model = SRCNN(cfg)
+    model.load_state_dict(torch.load(model_path))
+    model = model.to(device)
+    test_file_path = os.path.join(checkpoint_path, "test.h5")
+    with h5py.File(test_file_path, 'r') as hf:
+        data_array = np.array(hf.get('data'))
+        label_array = np.array(hf.get('label'))
+    data_array, label_array = torch.FloatTensor(data_array), torch.FloatTensor(label_array)
+    data_array, label_array = data_array.to(device), label_array.to(device)
+    pred = model(data_array)
+    pred = pred.cpu().detach().numpy()
+    pred = merge(pred, [nx, ny])
+    return pred
 
-# if __name__ == "__main__":
-#     cfg = Config()
-#     train(cfg)
-
-
-
-
-        
-
-
+if __name__ == "__main__":
+    cfg = Config()
+    pred = eval(cfg)
+    print(pred.shape)

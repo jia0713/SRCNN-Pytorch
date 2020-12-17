@@ -1,2 +1,0 @@
-preprocess: input_size:33 label_size:21
-optimizer: lr:0.01

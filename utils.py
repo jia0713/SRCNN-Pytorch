@@ -118,7 +118,7 @@ def input_setup():
             nx += 1
             for y in range(0, w-cfg.image_size+1, cfg.stride):
                 ny += 1
-                sub_input = input_[x:x+cfg.image_size, y:cfg.image_size] # [33 x 33]
+                sub_input = input_[x:x+cfg.image_size, y:y+cfg.image_size] # [33 x 33]
                 sub_label = label_[x+int(padding):x+int(padding)+cfg.label_size, y+int(padding):y+int(padding)+cfg.label_size] # [21 x 21]
                 sub_input = sub_input.reshape([cfg.image_size, cfg.image_size, 1])  
                 sub_label = sub_label.reshape([cfg.label_size, cfg.label_size, 1])
@@ -131,12 +131,12 @@ def input_setup():
         return nx, ny
 
 def merge(images, size):
-    h, w = images.shape[1], images.shape[2]
-    img = np.zeros((h * size[0], w * size[1], 1))
+    h, w = images.shape[2], images.shape[3]
+    img = np.zeros((1, h * size[0], w * size[1]))
     for idx, image in enumerate(images):
         i = idx % size[1]
         j = idx // size[1]
-        img[j*h:(j+1)*h, i*w:(i+1)*w, :] = image
+        img[:,j*h:(j+1)*h, i*w:(i+1)*w] = image
     return img
 
 if __name__ == "__main__":
