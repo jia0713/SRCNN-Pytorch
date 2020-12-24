@@ -52,7 +52,6 @@ def train(cfg):
     num_of_batch = len(data_array) // batch_size
     for epoch in range(1, epoches + 1):
         loss_array = np.zeros(num_of_batch)
-        # print(r"Epoch:{}".format(epoch))
         for idx in range(num_of_batch):
             train_batch, label_batch = data_array[idx*batch_size:(idx+1)*batch_size],\
                 label_array[idx*batch_size:(idx+1)*batch_size]
@@ -88,8 +87,9 @@ def eval(cfg):
     data_array, label_array = data_array.to(device), label_array.to(device)
     pred = model(data_array)
     pred = pred.cpu().detach().numpy()
-    pred = merge(pred, [nx, ny])
+    pred = merge(pred, [nx, ny], cfg)
     pred = pred.squeeze()
+    pred = (pred * 255).astype(np.uint8)
     image_path = os.path.join(os.getcwd(), "Test")
     image_path = os.path.join(image_path, "test_image.png")
     imwrite(image_path, pred)

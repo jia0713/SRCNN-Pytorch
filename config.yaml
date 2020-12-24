@@ -2,6 +2,8 @@ is_train: False
 image_size: 33
 label_size: 21
 batch_size: 64
+upscale: 2
+test_index: 3
 scale: 3
 stride: 14
 dataset:

@@ -7,6 +7,7 @@ import numpy as np
 import h5py
 
 from PIL import Image
+from skimage.transform import resize
 from tqdm import tqdm
 from config import Config
 
@@ -72,7 +73,7 @@ def prepare_data(data_path, cfg):
     """
     if cfg.is_train:
         data_dir = os.path.join(os.getcwd(), data_path)
-        data = glob.glob(os.path.join(data_dir, "*.bmp"))
+        data = glob.glob(os.path.join(data_dir, "*.*"))
     else:
         data_dir = os.path.join(os.sep, (os.path.join(os.getcwd(), data_path)), "Set5")
         data = glob.glob(os.path.join(data_dir, "*.bmp"))
@@ -88,7 +89,7 @@ def input_setup():
     else:
         data_path = cfg.dataset.test_path
     file_list = prepare_data(data_path, cfg)
-    padding = abs(cfg.image_size - cfg.label_size) / 2
+    padding = abs(cfg.image_size - cfg.label_size) // 2
     sub_input_array, sub_label_array = [], []
     if cfg.is_train:
         for i in tqdm(range(len(file_list))):
@@ -107,7 +108,8 @@ def input_setup():
                     sub_input_array.append(sub_input)
                     sub_label_array.append(sub_label)
     else:
-        input_, label_ = preprocess(file_list[0], cfg.scale)
+        test_index = cfg.test_index
+        input_, label_ = preprocess(file_list[test_index], cfg.scale)
         if len(input_.shape) == 3:
             h, w, _ = input_.shape
         else:
@@ -131,13 +133,17 @@ def input_setup():
     if not cfg.is_train:
         return nx, ny
 
-def merge(images, size):
-    h, w = images.shape[2], images.shape[3]
-    img = np.zeros((1, h * size[0], w * size[1]))
+def merge(images, size, cfg):
+    padding = abs(cfg.image_size - cfg.label_size) // 2
+    nx, ny = size[0], size[1]
+    h = (nx - 1) * cfg.stride + padding + cfg.label_size
+    w = (ny - 1) * cfg.stride + padding + cfg.label_size
+    img = np.zeros((1, h, w))
     for idx, image in enumerate(images):
-        i = idx % size[1]
-        j = idx // size[1]
-        img[:,j*h:(j+1)*h, i*w:(i+1)*w] = image
+        i = idx // nx
+        j = idx % ny
+        img[:, (i*cfg.stride+padding):(i*cfg.stride+padding+cfg.label_size), (j*cfg.stride+padding):(j*cfg.stride+padding+cfg.label_size)] = image
+    img = img[:, padding:, padding:]    
     return img
 
 if __name__ == "__main__":
