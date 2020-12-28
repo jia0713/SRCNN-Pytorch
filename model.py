@@ -1,3 +1,4 @@
+import cv2
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 import h5py
@@ -12,7 +13,8 @@ import torch.nn.functional as F
 
 from tqdm import tqdm
 from config import Config
-from imageio import imwrite
+from skimage.transform import resize
+from imageio import imread, imwrite
 from utils import input_setup, merge
 
 class SRCNN(nn.Module):
@@ -33,6 +35,10 @@ class SRCNN(nn.Module):
         x = F.relu(x)
         x = self.conv3(x)
         return x
+
+def psnr(image1, image2):
+    mse = np.mean((image1.astype(np.float64) / 255 - image2.astype(np.float64) / 255) ** 2)
+    print('PSNR: ', 10 * np.log10(1. / mse))
     
 def train(cfg):
     checkpoint_path = os.path.join(os.getcwd(), "checkpoint")
@@ -46,7 +52,8 @@ def train(cfg):
     device = torch.device("cuda" if use_cuda else "cpu")
     model = SRCNN(cfg)
     model = model.to(device)
-    optimizer = optim.Adam(params=model.parameters(), lr=cfg.train.lr)
+    lr = np.float(cfg.train.lr)
+    optimizer = optim.Adam(params=model.parameters(), lr=lr)
     epoches = cfg.train.epoches
     batch_size = cfg.batch_size
     num_of_batch = len(data_array) // batch_size
@@ -88,8 +95,11 @@ def eval(cfg):
     pred = model(data_array)
     pred = pred.cpu().detach().numpy()
     pred = merge(pred, [nx, ny], cfg)
+    org_image = imread(os.path.join(os.getcwd(), "Test", "org_image.png"))
     pred = pred.squeeze()
     pred = (pred * 255).astype(np.uint8)
+    org_image = resize(org_image, (pred.shape[0], pred.shape[1]))
+    psnr(org_image, pred)
     image_path = os.path.join(os.getcwd(), "Test")
     image_path = os.path.join(image_path, "test_image.png")
     imwrite(image_path, pred)

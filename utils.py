@@ -7,17 +7,21 @@ import numpy as np
 import h5py
 
 from PIL import Image
+from imageio import imwrite
 from skimage.transform import resize
 from tqdm import tqdm
 from config import Config
 
-def preprocess(path, scale=3):
+def preprocess(path, scale=3, upscale=1):
     """
     (1) Read original images as Ycbcr format
     (2) Normalize
     (3) Apply image file with bicubic interpolation
     """
     image = imread(path)
+    image =  resize(image, (image.shape[0] * upscale, image.shape[1] * upscale))
+    image = np.array(image, dtype=np.uint8)
+    imwrite(os.path.join(os.getcwd(), "Test", "org_image.png"), image)
     label_ = modcrop(image, scale)
     image = image / 255.0
     label_ = label_ / 255.0
@@ -76,7 +80,7 @@ def prepare_data(data_path, cfg):
         data = glob.glob(os.path.join(data_dir, "*.*"))
     else:
         data_dir = os.path.join(os.sep, (os.path.join(os.getcwd(), data_path)), "Set5")
-        data = glob.glob(os.path.join(data_dir, "*.bmp"))
+        data = glob.glob(os.path.join(data_dir, "*.*"))
     return data
 
 def input_setup():
@@ -109,7 +113,7 @@ def input_setup():
                     sub_label_array.append(sub_label)
     else:
         test_index = cfg.test_index
-        input_, label_ = preprocess(file_list[test_index], cfg.scale)
+        input_, label_ = preprocess(file_list[test_index], cfg.scale, cfg.upscale)
         if len(input_.shape) == 3:
             h, w, _ = input_.shape
         else:
@@ -140,7 +144,7 @@ def merge(images, size, cfg):
     w = (ny - 1) * cfg.stride + padding + cfg.label_size
     img = np.zeros((1, h, w))
     for idx, image in enumerate(images):
-        i = idx // nx
+        i = idx // ny
         j = idx % ny
         img[:, (i*cfg.stride+padding):(i*cfg.stride+padding+cfg.label_size), (j*cfg.stride+padding):(j*cfg.stride+padding+cfg.label_size)] = image
     img = img[:, padding:, padding:]    

@@ -3,7 +3,7 @@ image_size: 33
 label_size: 21
 batch_size: 64
 upscale: 2
-test_index: 3
+test_index: 0
 scale: 3
 stride: 14
 dataset:
@@ -11,6 +11,6 @@ dataset:
   test_path: "Test"
 train:
   use_cuda: True
-  lr: 0.000001
+  lr: 1e-6
   epoches: 100
   
